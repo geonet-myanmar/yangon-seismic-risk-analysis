@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yangon Seismic Risk Analysis Report</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f5f6fa;
+    --surface: #ffffff;
+    --border: #e2e5ed;
+    --text: #1a1d2e;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --accent2: #7c3aed;
+    --high: #dc2626;
+    --moderate: #ea580c;
+    --low: #ca8a04;
+    --vlow: #16a34a;
+    --nehrp-e: #7f1d1d;
+    --radius: 10px;
+    --shadow: 0 2px 12px rgba(0,0,0,.08);
+    --nav-h: 58px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.65; }
+
+  /* ── NAV ────────────────────────────────── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: #0f172a; color: #e2e8f0;
+    height: var(--nav-h); display: flex; align-items: center;
+    padding: 0 1.5rem; gap: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,.4);
+    overflow-x: auto; white-space: nowrap;
+  }
+  nav .brand { font-weight: 700; font-size: 1rem; color: #fff; flex-shrink: 0; margin-right: .5rem; }
+  nav a { color: #94a3b8; text-decoration: none; font-size: .83rem; padding: .25rem .55rem;
+          border-radius: 5px; transition: background .15s, color .15s; flex-shrink: 0; }
+  nav a:hover { background: #1e293b; color: #fff; }
+
+  /* ── HERO ───────────────────────────────── */
+  .hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #1e40af 100%);
+    color: #fff; padding: 3.5rem 2rem 3rem;
+    text-align: center;
+  }
+  .hero h1 { font-size: 2.1rem; font-weight: 800; letter-spacing: -.5px; margin-bottom: .5rem; }
+  .hero p.sub { color: #93c5fd; font-size: 1.05rem; max-width: 680px; margin: 0 auto 2rem; }
+  .hero .meta { color: #94a3b8; font-size: .85rem; }
+
+  .kpi-grid { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; margin-top: 2rem; }
+  .kpi {
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
+    border-radius: var(--radius); padding: 1rem 1.6rem; min-width: 150px; text-align: center;
+  }
+  .kpi .val { font-size: 2rem; font-weight: 800; color: #fff; }
+  .kpi .lbl { font-size: .78rem; color: #93c5fd; text-transform: uppercase; letter-spacing: .05em; }
+
+  /* ── LAYOUT ─────────────────────────────── */
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
+  section { padding: 3rem 0; }
+  section + section { border-top: 1px solid var(--border); }
+
+  h2 {
+    font-size: 1.55rem; font-weight: 700; margin-bottom: .35rem;
+    display: flex; align-items: center; gap: .5rem;
+  }
+  h2 .tag {
+    font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+    padding: .2rem .55rem; border-radius: 20px; background: #dbeafe; color: #1d4ed8;
+  }
+  h3 { font-size: 1.05rem; font-weight: 600; margin: 1.5rem 0 .6rem; color: #374151; }
+  p.lead { color: var(--muted); max-width: 760px; margin-bottom: 1.5rem; font-size: .97rem; }
+
+  /* ── CARDS ──────────────────────────────── */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+          padding: 1.4rem; box-shadow: var(--shadow); }
+  .card-grid { display: grid; gap: 1.2rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin: 1.2rem 0; }
+  .card-grid-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+
+  .stat-card { text-align: center; }
+  .stat-card .big { font-size: 2.2rem; font-weight: 800; color: var(--accent); }
+  .stat-card .desc { font-size: .82rem; color: var(--muted); margin-top: .2rem; }
+
+  /* ── TABLES ─────────────────────────────── */
+  .tbl-wrap { overflow-x: auto; margin: 1rem 0; }
+  table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+  th { background: #f1f5f9; font-weight: 600; padding: .6rem .9rem; text-align: left;
+       border-bottom: 2px solid var(--border); white-space: nowrap; color: #374151; }
+  td { padding: .55rem .9rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  tr:hover td { background: #f8fafc; }
+  .mono { font-family: 'Consolas', monospace; font-size: .82rem; }
+
+  /* risk badges */
+  .badge {
+    display: inline-block; padding: .15rem .55rem; border-radius: 20px;
+    font-size: .75rem; font-weight: 700; letter-spacing: .03em;
+  }
+  .badge-high     { background: #fee2e2; color: #991b1b; }
+  .badge-moderate { background: #ffedd5; color: #9a3412; }
+  .badge-low      { background: #fef9c3; color: #854d0e; }
+  .badge-vlow     { background: #dcfce7; color: #166534; }
+  .badge-nehrp    { background: #fce7f3; color: #9d174d; }
+  .badge-ok       { background: #d1fae5; color: #065f46; }
+  .badge-inc      { background: #f3f4f6; color: #6b7280; }
+  .badge-excl     { background: #fef3c7; color: #92400e; }
+
+  /* ── CHARTS ─────────────────────────────── */
+  .chart-box { background: var(--surface); border: 1px solid var(--border);
+               border-radius: var(--radius); padding: 1.2rem; box-shadow: var(--shadow); }
+  .chart-row { display: grid; gap: 1.2rem; grid-template-columns: 1fr 1fr; margin: 1rem 0; }
+  @media (max-width: 700px) { .chart-row { grid-template-columns: 1fr; } }
+
+  /* ── IMAGES ─────────────────────────────── */
+  .img-card { background: var(--surface); border: 1px solid var(--border);
+              border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+  .img-card img { width: 100%; display: block; }
+  .img-card .caption { padding: .6rem .9rem; font-size: .8rem; color: var(--muted); border-top: 1px solid var(--border); }
+
+  .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: .8rem; margin: 1rem 0; }
+  .gallery .img-card img { height: 160px; object-fit: cover; }
+
+  .img-wide { margin: 1rem 0; }
+  .img-wide img { width: 100%; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); display: block; }
+
+  /* ── CALLOUTS ───────────────────────────── */
+  .callout {
+    border-left: 4px solid; border-radius: 0 var(--radius) var(--radius) 0;
+    padding: .8rem 1.1rem; margin: 1rem 0; font-size: .9rem;
+  }
+  .callout-info  { background: #eff6ff; border-color: #3b82f6; color: #1e3a8a; }
+  .callout-warn  { background: #fffbeb; border-color: #f59e0b; color: #78350f; }
+  .callout-alert { background: #fef2f2; border-color: #ef4444; color: #7f1d1d; }
+
+  /* ── METHODS ────────────────────────────── */
+  .method-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin: 1rem 0; }
+  .method-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+                 padding: 1.1rem; }
+  .method-card h4 { font-size: .92rem; font-weight: 700; margin-bottom: .4rem; color: var(--accent); }
+  .method-card p  { font-size: .83rem; color: var(--muted); }
+
+  /* ── MAP LINKS ──────────────────────────── */
+  .map-link-btn {
+    display: inline-flex; align-items: center; gap: .4rem;
+    background: var(--accent); color: #fff; text-decoration: none;
+    padding: .5rem 1rem; border-radius: 6px; font-size: .87rem; font-weight: 600;
+    margin: .5rem .4rem .5rem 0; transition: background .15s;
+  }
+  .map-link-btn:hover { background: #1d4ed8; }
+  .map-link-btn.outline { background: transparent; border: 2px solid var(--accent); color: var(--accent); }
+  .map-link-btn.outline:hover { background: var(--accent); color: #fff; }
+
+  /* ── FOOTER ─────────────────────────────── */
+  footer { background: #0f172a; color: #64748b; text-align: center;
+           padding: 2rem 1.5rem; font-size: .83rem; }
+  footer a { color: #94a3b8; text-decoration: none; }
+
+  /* ── RESPONSIVE ─────────────────────────── */
+  @media (max-width: 600px) {
+    .hero h1 { font-size: 1.5rem; }
+    .kpi .val { font-size: 1.5rem; }
+    h2 { font-size: 1.25rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="brand">🌏 Yangon Seismic Risk</span>
+  <a href="#summary">Summary</a>
+  <a href="#s1">HVSR</a>
+  <a href="#s2">Microzonation</a>
+  <a href="#s3">Ground Motion</a>
+  <a href="#s4">Amplification</a>
+  <a href="#s5">Buildings</a>
+  <a href="#s6">Risk Map</a>
+  <a href="#methods">Methods</a>
+</nav>
+
+<!-- ═══════════════════════════ HERO ═══════════════════════════ -->
+<div class="hero">
+  <h1>Yangon Seismic Risk Analysis</h1>
+  <p class="sub">
+    A multi-module seismic hazard, site characterization, and building exposure study
+    for the Yangon Region, Myanmar, anchored to the M4.2 earthquake event of 22 May 2026.
+  </p>
+  <div class="meta">Generated 24 May 2026 &nbsp;·&nbsp; 44 Townships &nbsp;·&nbsp; 6 Analysis Modules</div>
+
+  <div class="kpi-grid">
+    <div class="kpi"><div class="val">14</div><div class="lbl">HVSR Sites<br>Valid</div></div>
+    <div class="kpi"><div class="val">5</div><div class="lbl">Seismic<br>Stations</div></div>
+    <div class="kpi"><div class="val">639 K</div><div class="lbl">Buildings<br>Mapped</div></div>
+    <div class="kpi"><div class="val">44</div><div class="lbl">Townships<br>Analysed</div></div>
+    <div class="kpi"><div class="val">NEHRP-E</div><div class="lbl">Dominant<br>Site Class</div></div>
+    <div class="kpi"><div class="val">1</div><div class="lbl">High-Risk<br>Township</div></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ EXECUTIVE SUMMARY ═══════════════════════════ -->
+<section id="summary">
+<div class="container">
+  <h2><span class="tag">Overview</span> Executive Summary</h2>
+  <p class="lead">
+    Ambient-noise HVSR measurements at 14 microzonation sites across Yangon reveal
+    fundamental frequencies of 0.6–1.5 Hz (periods 0.65–1.67 s), consistent with deep
+    alluvial deposits. All 44 analysed townships are classified as
+    <strong>NEHRP Site Class E (Very Soft Soil)</strong>. Ground-motion recordings from
+    the M4.2 event show PGA values of 0.6–101 cm/s² at epicentral distances of 3–25 km.
+    North Okkalapa Township carries the highest composite seismic risk index (SRI = 0.80),
+    driven by elevated hazard amplification and a large building stock.
+  </p>
+
+  <div class="callout callout-warn">
+    <strong>Data quality note:</strong> 10 of 25 microzonation sites lack a vertical (EHZ) channel
+    and could not be processed for HVSR. Station T9951 was excluded from ground-motion analysis
+    due to instrument-response mismatch. Event-window detection relied on peak-amplitude
+    fallback for most stations; only S7E9A provided a robust STA/LTA trigger at 07:02 UTC.
+  </div>
+
+  <div class="card-grid card-grid-3" style="margin-top:1.5rem">
+    <div class="card stat-card">
+      <div class="big" style="color:#7c3aed">0.6–1.5 Hz</div>
+      <div class="desc">HVSR fundamental frequency range<br>(median 0.83 Hz → T₀ ≈ 1.2 s)</div>
+    </div>
+    <div class="card stat-card">
+      <div class="big" style="color:#dc2626">101 cm/s²</div>
+      <div class="desc">Peak PGA recorded (R7183, 3.4 km)<br>May represent a local event trigger</div>
+    </div>
+    <div class="card stat-card">
+      <div class="big" style="color:#0369a1">0.80</div>
+      <div class="desc">Highest Seismic Risk Index<br>North Okkalapa Township</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════════════ MODULE 1: HVSR ═══════════════════════════ -->
+<section id="s1">
+<div class="container">
+  <h2><span class="tag">Module 1</span> HVSR Site Characterization</h2>
+  <p class="lead">
+    Horizontal-to-Vertical Spectral Ratio (HVSR) analysis was performed on 25 ambient-noise
+    recordings collected at SP01–SP25 (no SP22) using Raspberry Shake 3-component sensors.
+    14 sites returned valid results; 11 were excluded due to missing EHZ (vertical) channels.
+    Processing used 30-second Hanning-tapered windows with Konno-Ohmachi smoothing (b = 40)
+    and a transient-rejection threshold (RMS > 4× median discarded).
+  </p>
+
+  <div class="chart-row">
+    <div class="chart-box">
+      <h3 style="margin-top:0">Fundamental Frequency f₀ per Site</h3>
+      <canvas id="chart_f0" height="260"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3 style="margin-top:0">Peak Amplitude A₀ per Site (excluding SP01)</h3>
+      <canvas id="chart_a0" height="260"></canvas>
+    </div>
+  </div>
+
+  <h3>HVSR Results Table</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Site</th><th>Latitude</th><th>Longitude</th>
+          <th>f₀ (Hz)</th><th>T₀ (s)</th><th>A₀</th>
+          <th>Windows</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="mono">SP01</td><td>16.9301</td><td>96.1713</td><td>1.533</td><td>0.652</td><td>148.0 ⚠</td><td>110</td><td><span class="badge badge-ok">ok</span></td></tr>
+        <tr><td class="mono">SP02</td><td>16.9459</td><td>96.1697</td><td>1.467</td><td>0.682</td><td>18.05</td><td>134</td><td><span class="badge badge-ok">ok</span></td></tr>
+        <tr><td class="mono">SP03</td><td>16.9459</td><td>96.1697</td><td>0.933</td><td>1.071</td><td>9.83</td><td>138</td><td><span class="badge badge-ok">ok</span></td></tr>
+        <tr><td class="mono">SP04</td><td>16.7562</td><td>96.0918</td><td>—</td><td>—</td><td>—</td><td>0</td><td><span class="badge badge-inc">no EHZ</span></td></tr>
+        <tr><td class="mono">SP05</td><td>16.8450</td><td>96.1373</td><td>—</td><td>—</td><td>—</td><td>0</td><td><span class="badge badge-inc">no EHZ</span></td></tr>
+        <tr><td class="mono">SP06</td><td>16.8665</td><td>96.0285</td><td>—</td><td>—</td><td>—</td><td>0</td><td><span class="badge badge-inc">no EHZ</span></td></tr>
+        <tr><td class="mono">SP07</td><td>16.8666</td><td>96.0285</td><td>—</td><td>—</td><td>—</td><td>0</td><td><span class="badge badge-inc">no EHZ</span></td></tr>
+        <tr><td class="mono">SP08</td><td>16.9014</td><td>96.1766</td><td>—</td><td>—</td><td>—</td><td>0</td><td><span class="badge badge-inc">no EHZ</span></td></tr>
+        <tr><td class="mono">SP09</td><td>16.9158</td><td>96.2121</td><td>—</td><td>—</td><td>—</td><td>0</td><td><span class="badge badge-inc">no EHZ</span></td></tr>
+        <tr><td class="mono">SP10</td><td>16.8450</td><td>96.1759</td><td>0.633</td><td>1.579</td><td>3.38</td><td>150</td><td><span class="badge badge-ok">ok</span></td></tr>
+        <tr><td class="mono">SP11</td><td>16.8586</td><td>96.2190</td><td>1.100</td><td>0.909</td><td>3.78</td><td>150</td><td><span class="badge badge-ok">ok</span></td></tr>
+        <tr><td class="mono">SP12</td><td>16.8301</td><td>96.2740</td><td>—</td><td>—</td><td>—</td><td>0</td><td><span class="badge badge-inc">no EHZ</span></td></tr>
+        <tr><td class="mono">SP13</td><td>16.8143</td><td>96.2109</td><td>1.133</td><td>0.882</td><td>4.82</td><td>150</td><td><span class="badge badge-ok">ok</span></td></tr>
+        <tr><td class="mono">SP14</td><td>16.8004</td><td>96.1964</td><td>—</td><td>—</td><td>—</td><td>0</td><td><span class="badge badge-inc">no EHZ</span></td></tr>
+        <tr><td class="mono">SP15</td><td>16.7865</td><td>96.1749</td><td>—</td><td>—</td><td>—</td><td>0</td><td><span class="badge badge-inc">no EHZ</span></td></tr>
+        <tr><td class="mono">SP16</td><td>16.7558</td><td>96.1572</td><td>—</td><td>—</td><td>—</td><td>0</td><td><span class="badge badge-inc">no EHZ</span></td></tr>
+        <tr><td class="mono">SP17</td><td>16.7520</td><td>96.2627</td><td>0.833</td><td>1.200</td><td>2.86</td><td>150</td><td><span class="badge badge-ok">ok</span></td></tr>
+        <tr><td class="mono">SP18</td><td>16.8094</td><td>96.2184</td><td>0.900</td><td>1.111</td><td>5.49</td><td>150</td><td><span class="badge badge-ok">ok</span></td></tr>
+        <tr><td class="mono">SP19</td><td>16.8633</td><td>96.1356</td><td>0.767</td><td>1.304</td><td>3.79</td><td>150</td><td><span class="badge badge-ok">ok</span></td></tr>
+        <tr><td class="mono">SP20</td><td>16.8078</td><td>96.1805</td><td>0.700</td><td>1.429</td><td>6.27</td><td>148</td><td><span class="badge badge-ok">ok</span></td></tr>
+        <tr><td class="mono">SP21</td><td>16.8109</td><td>96.1362</td><td>0.600</td><td>1.667</td><td>4.11</td><td>150</td><td><span class="badge badge-ok">ok</span></td></tr>
+        <tr><td class="mono">SP23</td><td>16.7970</td><td>96.1226</td><td>0.967</td><td>1.034</td><td>7.59</td><td>150</td><td><span class="badge badge-ok">ok</span></td></tr>
+        <tr><td class="mono">SP24</td><td>16.8128</td><td>96.1574</td><td>0.767</td><td>1.304</td><td>5.21</td><td>146</td><td><span class="badge badge-ok">ok</span></td></tr>
+        <tr><td class="mono">SP25</td><td>16.8260</td><td>96.1639</td><td>0.600</td><td>1.667</td><td>4.11</td><td>150</td><td><span class="badge badge-ok">ok</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:.8rem;color:var(--muted)">⚠ SP01 A₀ = 148 is anomalously high (expected 2–15); likely instrument-response epoch mismatch for the RDEF5 station at NorthOkkalar. SP02/SP03 share the same MiniSEED file (two deployments at the same location).</p>
+
+  <h3>HVSR Curve Gallery (valid sites)</h3>
+  <div class="gallery">
+    <div class="img-card"><img src="outputs/hvsr_plots/SP01_hvsr.png" alt="SP01 HVSR"><div class="caption">SP01 — f₀ = 1.53 Hz</div></div>
+    <div class="img-card"><img src="outputs/hvsr_plots/SP02_hvsr.png" alt="SP02 HVSR"><div class="caption">SP02 — f₀ = 1.47 Hz</div></div>
+    <div class="img-card"><img src="outputs/hvsr_plots/SP03_hvsr.png" alt="SP03 HVSR"><div class="caption">SP03 — f₀ = 0.93 Hz</div></div>
+    <div class="img-card"><img src="outputs/hvsr_plots/SP10_hvsr.png" alt="SP10 HVSR"><div class="caption">SP10 — f₀ = 0.63 Hz</div></div>
+    <div class="img-card"><img src="outputs/hvsr_plots/SP11_hvsr.png" alt="SP11 HVSR"><div class="caption">SP11 — f₀ = 1.10 Hz</div></div>
+    <div class="img-card"><img src="outputs/hvsr_plots/SP13_hvsr.png" alt="SP13 HVSR"><div class="caption">SP13 — f₀ = 1.13 Hz</div></div>
+    <div class="img-card"><img src="outputs/hvsr_plots/SP17_hvsr.png" alt="SP17 HVSR"><div class="caption">SP17 — f₀ = 0.83 Hz</div></div>
+    <div class="img-card"><img src="outputs/hvsr_plots/SP18_hvsr.png" alt="SP18 HVSR"><div class="caption">SP18 — f₀ = 0.90 Hz</div></div>
+    <div class="img-card"><img src="outputs/hvsr_plots/SP19_hvsr.png" alt="SP19 HVSR"><div class="caption">SP19 — f₀ = 0.77 Hz</div></div>
+    <div class="img-card"><img src="outputs/hvsr_plots/SP20_hvsr.png" alt="SP20 HVSR"><div class="caption">SP20 — f₀ = 0.70 Hz</div></div>
+    <div class="img-card"><img src="outputs/hvsr_plots/SP21_hvsr.png" alt="SP21 HVSR"><div class="caption">SP21 — f₀ = 0.60 Hz</div></div>
+    <div class="img-card"><img src="outputs/hvsr_plots/SP23_hvsr.png" alt="SP23 HVSR"><div class="caption">SP23 — f₀ = 0.97 Hz</div></div>
+    <div class="img-card"><img src="outputs/hvsr_plots/SP24_hvsr.png" alt="SP24 HVSR"><div class="caption">SP24 — f₀ = 0.77 Hz</div></div>
+    <div class="img-card"><img src="outputs/hvsr_plots/SP25_hvsr.png" alt="SP25 HVSR"><div class="caption">SP25 — f₀ = 0.60 Hz</div></div>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════════════ MODULE 2: SPATIAL ═══════════════════════════ -->
+<section id="s2">
+<div class="container">
+  <h2><span class="tag">Module 2</span> Spatial Microzonation</h2>
+  <p class="lead">
+    HVSR results from the 14 valid sites were spatially interpolated to a 0.005° grid
+    covering all 44 townships using Ordinary Kriging (linear variogram model) with
+    IDW fallback. Each township was assigned a NEHRP site class based on the interpolated
+    fundamental period T₀. All townships classify as <strong>NEHRP Site Class E (Very Soft Soil)</strong>,
+    reflecting Yangon's deep Holocene alluvial basin.
+  </p>
+
+  <div class="callout callout-info">
+    <strong>Uniform NEHRP-E classification:</strong> The absence of bedrock or stiff-soil
+    reference sites within the measurement network means spatial discrimination is limited
+    to variations within Class E. Measured T₀ values range from 0.81 s (Hlegu) to 1.38 s
+    (Sanchaung), representing meaningful differences in depth-to-bedrock and sediment
+    stiffness across the city, even within the same NEHRP class.
+  </div>
+
+  <div class="img-wide">
+    <img src="outputs/microzonation_static.png" alt="Microzonation Map">
+  </div>
+
+  <div style="margin: .8rem 0 1.5rem">
+    <a href="outputs/microzonation_map.html" class="map-link-btn" target="_blank">
+      🗺 Open Interactive Microzonation Map
+    </a>
+  </div>
+
+  <h3>Township Microzonation — Top 20 by Mean Amplification (A₀)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr><th>Township</th><th>District</th><th>f₀ (Hz)</th><th>T₀ (s)</th><th>A₀</th><th>NEHRP</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Mingaladon</td><td>Yangon (North)</td><td>1.187</td><td>0.845</td><td>38.76</td><td><span class="badge badge-nehrp">E</span></td></tr>
+        <tr><td>Insein</td><td>Yangon (North)</td><td>0.991</td><td>1.012</td><td>28.54</td><td><span class="badge badge-nehrp">E</span></td></tr>
+        <tr><td>Shwepyithar</td><td>Yangon (North)</td><td>1.119</td><td>0.894</td><td>34.46</td><td><span class="badge badge-nehrp">E</span></td></tr>
+        <tr><td>Hmawbi</td><td>Yangon (North)</td><td>1.172</td><td>0.854</td><td>34.58</td><td><span class="badge badge-nehrp">E</span></td></tr>
+        <tr><td>North Okkalapa</td><td>Yangon (East)</td><td>1.165</td><td>0.864</td><td>48.88</td><td><span class="badge badge-nehrp">E</span></td></tr>
+        <tr><td>Dagon Myothit (N)</td><td>Yangon (East)</td><td>1.029</td><td>0.976</td><td>29.72</td><td><span class="badge badge-nehrp">E</span></td></tr>
+        <tr><td>South Okkalapa</td><td>Yangon (East)</td><td>0.848</td><td>1.182</td><td>11.33</td><td><span class="badge badge-nehrp">E</span></td></tr>
+        <tr><td>Yankin</td><td>Yangon (East)</td><td>0.762</td><td>1.313</td><td>7.63</td><td><span class="badge badge-nehrp">E</span></td></tr>
+        <tr><td>Thingangyun</td><td>Yangon (East)</td><td>0.886</td><td>1.132</td><td>6.79</td><td><span class="badge badge-nehrp">E</span></td></tr>
+        <tr><td>Kamaryut</td><td>Yangon (West)</td><td>0.762</td><td>1.314</td><td>7.10</td><td><span class="badge badge-nehrp">E</span></td></tr>
+        <tr><td>Sanchaung</td><td>Yangon (West)</td><td>0.765</td><td>1.308</td><td>5.64</td><td><span class="badge badge-nehrp">E</span></td></tr>
+        <tr><td>Hlaing</td><td>Yangon (West)</td><td>0.815</td><td>1.227</td><td>11.60</td><td><span class="badge badge-nehrp">E</span></td></tr>
+        <tr><td>Latha</td><td>Yangon (West)</td><td>0.782</td><td>1.279</td><td>3.45</td><td><span class="badge badge-nehrp">E</span></td></tr>
+        <tr><td>Pabedan</td><td>Yangon (West)</td><td>0.782</td><td>1.278</td><td>3.21</td><td><span class="badge badge-nehrp">E</span></td></tr>
+        <tr><td>Mayangone</td><td>Yangon (West)</td><td>0.859</td><td>1.170</td><td>17.21</td><td><span class="badge badge-nehrp">E</span></td></tr>
+        <tr><td>Tamwe</td><td>Yangon (East)</td><td>0.768</td><td>1.302</td><td>4.73</td><td><span class="badge badge-nehrp">E</span></td></tr>
+        <tr><td>Dawbon</td><td>Yangon (East)</td><td>0.851</td><td>1.175</td><td>7.63</td><td><span class="badge badge-nehrp">E</span></td></tr>
+        <tr><td>Hlaingtharya (E)</td><td>Yangon (North)</td><td>0.903</td><td>1.111</td><td>18.45</td><td><span class="badge badge-nehrp">E</span></td></tr>
+        <tr><td>Hlegu</td><td>Yangon (North)</td><td>1.241</td><td>0.806</td><td>36.11</td><td><span class="badge badge-nehrp">E</span></td></tr>
+        <tr><td>Dagon Myothit (E)</td><td>Yangon (East)</td><td>1.188</td><td>0.843</td><td>35.92</td><td><span class="badge badge-nehrp">E</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════════════ MODULE 3: GROUND MOTION ═══════════════════════════ -->
+<section id="s3">
+<div class="container">
+  <h2><span class="tag">Module 3</span> Earthquake Ground Motion</h2>
+  <p class="lead">
+    Waveform data from the M4.2 Yangon earthquake (22 May 2026) were processed at 6 Raspberry
+    Shake stations in the Yangon metropolitan area. Instrument responses were removed to obtain
+    acceleration time series; PGA, PGV, and Arias Intensity were computed from the horizontal
+    components. Station T9951 was excluded (instrument-response mismatch; physically impossible
+    PGA computed). Event-window detection used STA/LTA (1 s / 10 s); most stations fell back to
+    peak-amplitude detection on the full-day trace.
+  </p>
+
+  <div class="callout callout-warn">
+    <strong>Event time uncertainty:</strong> Only station S7E9A produced a robust STA/LTA trigger
+    at <strong>07:02 UTC</strong> on 22 May 2026, consistent with the expected M4.2 event.
+    R7183 triggered at 23:43 UTC — this may reflect a separate local event or elevated noise.
+    PGA values from R8939, RDBC5, and RF99C (fallback detection) should be treated as upper-bound
+    estimates for the M4.2 event at those sites.
+  </div>
+
+  <div class="chart-row">
+    <div class="chart-box">
+      <h3 style="margin-top:0">PGA vs. Epicentral Distance</h3>
+      <canvas id="chart_pga" height="220"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3 style="margin-top:0">Response Spectra — All Stations</h3>
+      <img src="outputs/response_spectra_all.png" alt="Response Spectra" style="width:100%;border-radius:6px">
+    </div>
+  </div>
+
+  <h3>Ground-Motion Summary</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr><th>Station</th><th>Lat</th><th>Lon</th><th>Dist (km)</th>
+            <th>PGA (cm/s²)</th><th>PGV (cm/s)</th><th>Ia (m/s)</th>
+            <th>Event Onset (UTC)</th><th>Detection</th><th>Note</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono">R7183</td><td>16.874</td><td>96.133</td><td>3.4</td>
+          <td><strong>101.27</strong></td><td>30.19</td><td>0.065</td>
+          <td class="mono">23:43:47</td>
+          <td>STA/LTA</td>
+          <td>⚠ Uncertain — late UTC trigger</td>
+        </tr>
+        <tr>
+          <td class="mono">R8939</td><td>16.802</td><td>96.135</td><td>8.2</td>
+          <td>5.70</td><td>0.030</td><td>0.000034</td>
+          <td class="mono">12:29:42</td>
+          <td>Peak-amp</td><td></td>
+        </tr>
+        <tr>
+          <td class="mono">RDBC5</td><td>16.793</td><td>96.146</td><td>8.8</td>
+          <td>1.65</td><td>0.042</td><td>0.000043</td>
+          <td class="mono">06:29:39</td>
+          <td>Peak-amp</td><td></td>
+        </tr>
+        <tr>
+          <td class="mono">RF99C</td><td>16.811</td><td>96.135</td><td>7.3</td>
+          <td>0.62</td><td>0.042</td><td>0.000035</td>
+          <td class="mono">22:17:34</td>
+          <td>Peak-amp</td><td></td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td class="mono">S7E9A</td><td>16.667</td><td>96.262</td><td>24.9</td>
+          <td>3.73</td><td>0.060</td><td>0.000088</td>
+          <td class="mono"><strong>07:02:07</strong></td>
+          <td><span class="badge badge-ok">STA/LTA</span></td>
+          <td>Most reliable trigger</td>
+        </tr>
+        <tr style="background:#fef3c7">
+          <td class="mono">T9951</td><td>16.901</td><td>96.558</td><td>42.0</td>
+          <td colspan="3" style="color:var(--muted)">— excluded —</td>
+          <td class="mono">—</td>
+          <td><span class="badge badge-excl">excluded</span></td>
+          <td>Response removal failure</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Recorded Waveforms</h3>
+  <div class="gallery">
+    <div class="img-card"><img src="outputs/event_waveforms/R7183_waveform.png" alt="R7183 waveform"><div class="caption">R7183 (3.4 km)</div></div>
+    <div class="img-card"><img src="outputs/event_waveforms/R8939_waveform.png" alt="R8939 waveform"><div class="caption">R8939 (8.2 km)</div></div>
+    <div class="img-card"><img src="outputs/event_waveforms/RDBC5_waveform.png" alt="RDBC5 waveform"><div class="caption">RDBC5 (8.8 km)</div></div>
+    <div class="img-card"><img src="outputs/event_waveforms/RF99C_waveform.png" alt="RF99C waveform"><div class="caption">RF99C (7.3 km)</div></div>
+    <div class="img-card"><img src="outputs/event_waveforms/S7E9A_waveform.png" alt="S7E9A waveform"><div class="caption">S7E9A (24.9 km)</div></div>
+    <div class="img-card"><img src="outputs/event_waveforms/T9951_waveform.png" alt="T9951 waveform"><div class="caption">T9951 — excluded</div></div>
+  </div>
+
+  <div class="img-wide" style="margin-top:1rem">
+    <img src="outputs/pga_attenuation.png" alt="PGA Attenuation">
+  </div>
+  <div class="img-wide">
+    <img src="outputs/event_fas.png" alt="Fourier Amplitude Spectra">
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════════════ MODULE 4: SSR ═══════════════════════════ -->
+<section id="s4">
+<div class="container">
+  <h2><span class="tag">Module 4</span> Site Amplification — SSR vs. HVSR</h2>
+  <p class="lead">
+    Standard Spectral Ratio (SSR) amplification was computed for each event station using
+    S7E9A as the reference (most distant station, lowest expected site amplification).
+    SSR fundamental frequencies are compared against the nearest HVSR measurement to assess
+    consistency between the ambient-noise and earthquake-based methods.
+  </p>
+
+  <div class="callout callout-warn">
+    <strong>Reference station caveat:</strong> SSR ideally requires a bedrock reference station.
+    S7E9A is a soft-soil station (~25 km from epicentre) used here as the best available
+    substitute. All computed SSR A₀ values are therefore relative amplifications,
+    not absolute site factors.
+  </div>
+
+  <div class="chart-row">
+    <div class="chart-box">
+      <h3 style="margin-top:0">SSR f₀ vs. HVSR f₀ (nearest site)</h3>
+      <canvas id="chart_ssr" height="220"></canvas>
+    </div>
+    <div class="img-card" style="display:flex;flex-direction:column;justify-content:center">
+      <img src="outputs/ssr_comparison.png" alt="SSR Comparison">
+      <div class="caption">SSR curves for all stations (S7E9A = reference, normalised to 1.0)</div>
+    </div>
+  </div>
+
+  <h3>SSR Results Table</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr><th>Station</th><th>SSR f₀ (Hz)</th><th>SSR A₀</th>
+            <th>Nearest HVSR Site</th><th>HVSR f₀ (Hz)</th><th>HVSR A₀</th>
+            <th>Δf₀</th><th>Note</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono">R7183</td><td>0.571</td><td>324.2 ⚠</td>
+          <td class="mono">SP19</td><td>0.767</td><td>3.79</td><td>0.195</td>
+          <td>High SSR A₀ — suspect (same source issue as R7183 PGA)</td>
+        </tr>
+        <tr>
+          <td class="mono">R8939</td><td>2.371</td><td>0.17</td>
+          <td class="mono">SP21</td><td>0.600</td><td>4.11</td><td>1.771</td>
+          <td>SSR f₀ high — possible S-wave resonance or source effect</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td class="mono">RDBC5</td><td>0.571</td><td>3.81</td>
+          <td class="mono">SP21</td><td>0.600</td><td>4.11</td><td>0.029</td>
+          <td>✓ Good SSR/HVSR agreement (Δf₀ = 0.03 Hz)</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td class="mono">RF99C</td><td>0.971</td><td>2.77</td>
+          <td class="mono">SP21</td><td>0.600</td><td>4.11</td><td>0.371</td>
+          <td>Moderate agreement</td>
+        </tr>
+        <tr>
+          <td class="mono">S7E9A</td><td>0.514</td><td>1.00</td>
+          <td class="mono">SP17</td><td>0.833</td><td>2.86</td><td>0.319</td>
+          <td>Reference station (normalised)</td>
+        </tr>
+        <tr style="background:#fef3c7">
+          <td class="mono">T9951</td><td>8.112</td><td>2.7×10⁷ ⚠</td>
+          <td class="mono">SP17</td><td>0.833</td><td>2.86</td><td>7.279</td>
+          <td>Excluded — response failure propagated to SSR</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Per-Station SSR Curves</h3>
+  <div class="gallery">
+    <div class="img-card"><img src="outputs/ssr_plots/R7183_ssr.png" alt="R7183 SSR"><div class="caption">R7183</div></div>
+    <div class="img-card"><img src="outputs/ssr_plots/R8939_ssr.png" alt="R8939 SSR"><div class="caption">R8939</div></div>
+    <div class="img-card"><img src="outputs/ssr_plots/RDBC5_ssr.png" alt="RDBC5 SSR"><div class="caption">RDBC5</div></div>
+    <div class="img-card"><img src="outputs/ssr_plots/RF99C_ssr.png" alt="RF99C SSR"><div class="caption">RF99C</div></div>
+    <div class="img-card"><img src="outputs/ssr_plots/S7E9A_ssr.png" alt="S7E9A SSR"><div class="caption">S7E9A (ref)</div></div>
+    <div class="img-card"><img src="outputs/ssr_plots/T9951_ssr.png" alt="T9951 SSR"><div class="caption">T9951 — excluded</div></div>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════════════ MODULE 5: BUILDINGS ═══════════════════════════ -->
+<section id="s5">
+<div class="container">
+  <h2><span class="tag">Module 5</span> Building Exposure &amp; Vulnerability</h2>
+  <p class="lead">
+    639,318 building footprints from OpenStreetMap-derived data were spatially joined to the
+    44 township boundaries. Building density, coverage ratio, and footprint statistics were
+    computed per township. A resonance risk proxy was derived by comparing inferred building
+    natural periods (estimated from footprint area) against the site T₀ from Module 2.
+  </p>
+
+  <div class="callout callout-info">
+    <strong>Resonance proxy limitation:</strong> Building natural period was estimated from
+    footprint area using an empirical size proxy (T_bldg ≈ 0.1√area/10). Without actual
+    storey counts or structural type data, all townships return "Low" resonance risk — the
+    proxy is conservative. Real resonance assessment would require storey-count or height data.
+  </div>
+
+  <div class="chart-row">
+    <div class="chart-box">
+      <h3 style="margin-top:0">Top 15 Townships by Building Density</h3>
+      <canvas id="chart_density" height="260"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3 style="margin-top:0">Top 15 Townships by Coverage Ratio</h3>
+      <canvas id="chart_coverage" height="260"></canvas>
+    </div>
+  </div>
+
+  <div class="img-wide">
+    <img src="outputs/building_exposure_static.png" alt="Building Exposure Map">
+  </div>
+
+  <div style="margin: .8rem 0 1.5rem">
+    <a href="outputs/building_density_map.html" class="map-link-btn" target="_blank">
+      🗺 Open Interactive Building Density Map
+    </a>
+  </div>
+
+  <h3>Township Exposure — Top 20 by Building Density</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr><th>Township</th><th>District</th><th>Buildings</th>
+            <th>Density (bldg/km²)</th><th>Coverage Ratio</th><th>Resonance Risk</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Latha</td><td>Yangon (West)</td><td>1,273</td><td>2,071</td><td>0.449</td><td><span class="badge badge-vlow">Low</span></td></tr>
+        <tr><td>Sanchaung</td><td>Yangon (West)</td><td>4,162</td><td>1,788</td><td>0.343</td><td><span class="badge badge-vlow">Low</span></td></tr>
+        <tr><td>South Okkalapa</td><td>Yangon (East)</td><td>14,389</td><td>1,777</td><td>0.270</td><td><span class="badge badge-vlow">Low</span></td></tr>
+        <tr><td>Pabedan</td><td>Yangon (West)</td><td>936</td><td>1,585</td><td>0.477</td><td><span class="badge badge-vlow">Low</span></td></tr>
+        <tr><td>Dagon Myothit (N)</td><td>Yangon (East)</td><td>33,810</td><td>1,414</td><td>0.149</td><td><span class="badge badge-vlow">Low</span></td></tr>
+        <tr><td>North Okkalapa</td><td>Yangon (East)</td><td>38,126</td><td>1,392</td><td>0.181</td><td><span class="badge badge-vlow">Low</span></td></tr>
+        <tr><td>Thaketa</td><td>Yangon (East)</td><td>17,251</td><td>1,314</td><td>0.193</td><td><span class="badge badge-vlow">Low</span></td></tr>
+        <tr><td>Dawbon</td><td>Yangon (East)</td><td>4,227</td><td>1,298</td><td>0.244</td><td><span class="badge badge-vlow">Low</span></td></tr>
+        <tr><td>Yankin</td><td>Yangon (East)</td><td>6,133</td><td>1,245</td><td>0.227</td><td><span class="badge badge-vlow">Low</span></td></tr>
+        <tr><td>Tamwe</td><td>Yangon (East)</td><td>5,696</td><td>1,196</td><td>0.267</td><td><span class="badge badge-vlow">Low</span></td></tr>
+        <tr><td>Pazundaung</td><td>Yangon (West)</td><td>1,259</td><td>1,136</td><td>0.321</td><td><span class="badge badge-vlow">Low</span></td></tr>
+        <tr><td>Kyauktada</td><td>Yangon (West)</td><td>818</td><td>1,131</td><td>0.401</td><td><span class="badge badge-vlow">Low</span></td></tr>
+        <tr><td>Thingangyun</td><td>Yangon (East)</td><td>14,855</td><td>1,128</td><td>0.212</td><td><span class="badge badge-vlow">Low</span></td></tr>
+        <tr><td>Lanmadaw</td><td>Yangon (West)</td><td>1,987</td><td>1,052</td><td>0.287</td><td><span class="badge badge-vlow">Low</span></td></tr>
+        <tr><td>Insein</td><td>Yangon (North)</td><td>30,099</td><td>988</td><td>0.182</td><td><span class="badge badge-vlow">Low</span></td></tr>
+        <tr><td>Hlaing</td><td>Yangon (West)</td><td>7,408</td><td>744</td><td>0.238</td><td><span class="badge badge-vlow">Low</span></td></tr>
+        <tr><td>Kyeemyindaing</td><td>Yangon (West)</td><td>3,037</td><td>672</td><td>0.218</td><td><span class="badge badge-vlow">Low</span></td></tr>
+        <tr><td>Hlaingtharya (E)</td><td>Yangon (North)</td><td>23,083</td><td>639</td><td>0.151</td><td><span class="badge badge-vlow">Low</span></td></tr>
+        <tr><td>Mayangone</td><td>Yangon (West)</td><td>14,408</td><td>588</td><td>0.130</td><td><span class="badge badge-vlow">Low</span></td></tr>
+        <tr><td>Ahlone</td><td>Yangon (West)</td><td>3,756</td><td>539</td><td>0.188</td><td><span class="badge badge-vlow">Low</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════════════ MODULE 6: RISK ═══════════════════════════ -->
+<section id="s6">
+<div class="container">
+  <h2><span class="tag">Module 6</span> Integrated Seismic Risk Map</h2>
+  <p class="lead">
+    A composite Seismic Risk Index (SRI) was computed for each township by combining three
+    normalised sub-scores: site hazard (H, weight 0.40), building exposure (E, weight 0.35),
+    and recorded PGA (P, weight 0.25). SRI = 0.40·H + 0.35·E + 0.25·P. All sub-scores were
+    normalised to [0, 1] across the 44-township dataset.
+  </p>
+
+  <div class="card-grid card-grid-3" style="margin-bottom:1.5rem">
+    <div class="card" style="border-left:4px solid var(--high)">
+      <div style="font-weight:700;color:var(--high);font-size:1.05rem">🔴 High Risk</div>
+      <div style="font-size:.9rem;margin-top:.3rem">1 township</div>
+      <div style="font-size:.82rem;color:var(--muted)">SRI ≥ 0.70</div>
+    </div>
+    <div class="card" style="border-left:4px solid var(--moderate)">
+      <div style="font-weight:700;color:var(--moderate);font-size:1.05rem">🟠 Moderate Risk</div>
+      <div style="font-size:.9rem;margin-top:.3rem">5 townships</div>
+      <div style="font-size:.82rem;color:var(--muted)">SRI 0.45–0.70</div>
+    </div>
+    <div class="card" style="border-left:4px solid var(--low)">
+      <div style="font-weight:700;color:var(--low);font-size:1.05rem">🟡 Low / Very Low</div>
+      <div style="font-size:.9rem;margin-top:.3rem">38 townships</div>
+      <div style="font-size:.82rem;color:var(--muted)">SRI &lt; 0.45</div>
+    </div>
+  </div>
+
+  <div class="chart-box" style="margin-bottom:1.2rem">
+    <h3 style="margin-top:0">Seismic Risk Index — All Townships</h3>
+    <canvas id="chart_sri" height="160"></canvas>
+  </div>
+
+  <div class="img-wide">
+    <img src="outputs/risk_map_static.png" alt="Risk Map">
+  </div>
+
+  <div style="margin: .8rem 0 1.5rem">
+    <a href="outputs/risk_map.html" class="map-link-btn" target="_blank">
+      🗺 Open Interactive Risk Map
+    </a>
+  </div>
+
+  <h3>Full SRI Rankings</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr><th>#</th><th>Township</th><th>District</th>
+            <th>Hazard Score</th><th>Exposure Score</th><th>PGA Score</th>
+            <th>SRI</th><th>Class</th></tr>
+      </thead>
+      <tbody id="risk-tbody"></tbody>
+    </table>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════════════ METHODS ═══════════════════════════ -->
+<section id="methods">
+<div class="container">
+  <h2><span class="tag">Methods</span> Data &amp; Methodology</h2>
+
+  <div class="method-grid">
+    <div class="method-card">
+      <h4>HVSR (Module 1)</h4>
+      <p>30-second Hanning-tapered windows; max 150 windows; transient rejection at 4× median RMS(Z).
+         Konno-Ohmachi smoothing b = 40. Geometric mean H/V; f₀ searched 0.5–12 Hz.
+         Instrument response removed with ObsPy (output = VEL, pre_filt = 0.1/0.2/45/50 Hz).
+         3-stage time-window fallback: stated UTC → local (UTC+6:30) → full recording +30 min.</p>
+    </div>
+    <div class="method-card">
+      <h4>Spatial Interpolation (Module 2)</h4>
+      <p>Ordinary Kriging (PyKrige, linear variogram) on a 0.005° grid. IDW fallback if
+         Kriging fails. NEHRP class assigned from interpolated T₀:
+         T₀ &gt; 0.5 s → Class E (Very Soft).</p>
+    </div>
+    <div class="method-card">
+      <h4>Ground Motion (Module 3)</h4>
+      <p>MiniSEED + StationXML loaded with ObsPy. Channel selection: EHZ + EHE/EHN if available,
+         else EHZ + ENE/ENN. Response removed → acceleration (output = ACC, pre_filt = 0.1/0.2/45/50 Hz,
+         water_level = 60). PGA from geometric mean of horizontal peak absolute acceleration.
+         Arias Intensity via np.trapezoid.</p>
+    </div>
+    <div class="method-card">
+      <h4>SSR Amplification (Module 4)</h4>
+      <p>Standard Spectral Ratio vs. S7E9A reference. 5 s pre-signal, 30 s signal window.
+         Konno-Ohmachi smoothing applied to Fourier spectra. f₀ identified as peak of
+         geometric-mean horizontal SSR.</p>
+    </div>
+    <div class="method-card">
+      <h4>Building Exposure (Module 5)</h4>
+      <p>639,318 building footprints (GeoJSON, ~247 MB) projected to UTM Zone 47N, area computed,
+         spatially joined to townships. Density = buildings/km². Coverage = sum(footprint)/township area.
+         Resonance proxy: T_bldg estimated from footprint area.</p>
+    </div>
+    <div class="method-card">
+      <h4>Risk Index (Module 6)</h4>
+      <p>SRI = 0.40·H + 0.35·E + 0.25·P. Hazard score from normalised mean_A0×f0 product.
+         Exposure score from normalised building density. PGA score from IDW-interpolated
+         station PGA at township centroids, normalised. Classes: Very Low &lt;0.20,
+         Low 0.20–0.45, Moderate 0.45–0.70, High ≥ 0.70.</p>
+    </div>
+  </div>
+
+  <h3>Datasets</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Dataset</th><th>Source</th><th>Coverage</th><th>Format</th></tr></thead>
+      <tbody>
+        <tr><td>Township Boundaries</td><td>MIMU / OCHA Myanmar</td><td>44 townships, Yangon Region (excl. Cocokyun)</td><td>GeoJSON, WGS84</td></tr>
+        <tr><td>Building Footprints</td><td>OpenStreetMap (derived)</td><td>639,318 buildings, same 44 townships</td><td>GeoJSON, ~247 MB</td></tr>
+        <tr><td>Microzonation Waveforms</td><td>Field campaign, Jan–Feb 2026</td><td>25 sites (SP01–SP25, no SP22), Raspberry Shake 3-comp</td><td>MiniSEED + StationXML</td></tr>
+        <tr><td>Earthquake Waveforms</td><td>AM Network, 22 May 2026</td><td>6 stations, M4.2 Yangon event</td><td>MiniSEED + StationXML</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Software</h3>
+  <p style="font-size:.88rem;color:var(--muted)">
+    Python 3.13 · ObsPy 1.5 · NumPy 2.4 · SciPy 1.17 · GeoPandas 1.1 · Shapely 2.1 ·
+    PyKrige 1.7 · Pandas 2.3 · Folium 0.20 · Matplotlib 3.x
+  </p>
+
+  <h3>Known Limitations &amp; Caveats</h3>
+  <ul style="font-size:.9rem;color:var(--muted);line-height:2;padding-left:1.4rem">
+    <li>10 microzonation sites lack EHZ — spatial coverage is uneven (southern townships under-represented)</li>
+    <li>SP01 A₀ = 148 is anomalously high and excluded from hazard scoring</li>
+    <li>All NEHRP classes are E — no bedrock reference available to resolve sub-class differences</li>
+    <li>T9951 excluded from all quantitative analysis (instrument-response mismatch)</li>
+    <li>R7183 trigger at 23:43 UTC may not correspond to the M4.2 event (07:02 UTC per S7E9A)</li>
+    <li>Resonance risk is conservative (footprint proxy); height/storey data needed for accurate building-period estimation</li>
+    <li>SRI weights (0.40 / 0.35 / 0.25) are expert-judgement assignments, not calibrated against loss data</li>
+  </ul>
+</div>
+</section>
+
+<footer>
+  <div>Yangon Seismic Risk Analysis · Generated 24 May 2026</div>
+  <div style="margin-top:.4rem">
+    Data: MIMU/OCHA · OpenStreetMap contributors · AM Raspberry Shake Network
+  </div>
+</footer>
+
+<!-- ═══════════════════════════ CHARTS JS ═══════════════════════════ -->
+<script>
+/* ── colour helpers ─── */
+const C = {
+  blue:   '#2563eb', purple: '#7c3aed', red: '#dc2626',
+  orange: '#ea580c', amber:  '#d97706', green: '#16a34a',
+  sky:    '#0ea5e9', teal:   '#0d9488',
+};
+
+/* ── f0 bar chart ─── */
+new Chart(document.getElementById('chart_f0'), {
+  type: 'bar',
+  data: {
+    labels: ['SP01','SP02','SP03','SP10','SP11','SP13','SP17','SP18','SP19','SP20','SP21','SP23','SP24','SP25'],
+    datasets: [{
+      label: 'f₀ (Hz)',
+      data: [1.5333,1.4667,0.9333,0.6333,1.1,1.1333,0.8333,0.9,0.7667,0.7,0.6,0.9667,0.7667,0.6],
+      backgroundColor: '#3b82f680',
+      borderColor: '#2563eb',
+      borderWidth: 1.5,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { title: { display: true, text: 'f₀ (Hz)' }, min: 0, max: 2 },
+      y: { ticks: { font: { family: 'Consolas, monospace', size: 11 } } }
+    }
+  }
+});
+
+/* ── A0 bar chart (exclude SP01) ─── */
+new Chart(document.getElementById('chart_a0'), {
+  type: 'bar',
+  data: {
+    labels: ['SP02','SP03','SP10','SP11','SP13','SP17','SP18','SP19','SP20','SP21','SP23','SP24','SP25'],
+    datasets: [{
+      label: 'A₀',
+      data: [18.05,9.83,3.38,3.78,4.82,2.86,5.49,3.79,6.27,4.11,7.59,5.21,4.11],
+      backgroundColor: '#7c3aed80',
+      borderColor: '#7c3aed',
+      borderWidth: 1.5,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { title: { display: true, text: 'A₀ (H/V peak)' } },
+      y: { ticks: { font: { family: 'Consolas, monospace', size: 11 } } }
+    }
+  }
+});
+
+/* ── PGA vs distance scatter ─── */
+new Chart(document.getElementById('chart_pga'), {
+  type: 'scatter',
+  data: {
+    datasets: [
+      {
+        label: 'Valid (STA/LTA or fallback)',
+        data: [
+          {x: 8.22,  y: 5.70,  station: 'R8939'},
+          {x: 8.82,  y: 1.65,  station: 'RDBC5'},
+          {x: 7.29,  y: 0.62,  station: 'RF99C'},
+          {x: 24.88, y: 3.73,  station: 'S7E9A'},
+        ],
+        backgroundColor: C.blue,
+        pointRadius: 7,
+      },
+      {
+        label: 'Uncertain trigger (R7183)',
+        data: [{x: 3.39, y: 101.27, station: 'R7183'}],
+        backgroundColor: C.orange,
+        pointRadius: 7,
+        pointStyle: 'triangle',
+      }
+    ]
+  },
+  options: {
+    scales: {
+      x: { title: { display: true, text: 'Epicentral Distance (km)' } },
+      y: { title: { display: true, text: 'PGA (cm/s²)' }, type: 'logarithmic' }
+    },
+    plugins: {
+      tooltip: {
+        callbacks: {
+          label: ctx => `${ctx.raw.station}: ${ctx.raw.y} cm/s² @ ${ctx.raw.x} km`
+        }
+      }
+    }
+  }
+});
+
+/* ── SSR f0 vs HVSR f0 scatter ─── */
+new Chart(document.getElementById('chart_ssr'), {
+  type: 'scatter',
+  data: {
+    datasets: [
+      {
+        label: '1:1 line',
+        data: [{x:0,y:0},{x:2,y:2}],
+        type: 'line',
+        borderColor: '#94a3b8',
+        borderDash: [5,4],
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: false,
+      },
+      {
+        label: 'Station',
+        data: [
+          {x: 0.767, y: 0.571, label: 'R7183'},
+          {x: 0.600, y: 2.371, label: 'R8939'},
+          {x: 0.600, y: 0.571, label: 'RDBC5 ✓'},
+          {x: 0.600, y: 0.971, label: 'RF99C'},
+          {x: 0.833, y: 0.514, label: 'S7E9A(ref)'},
+        ],
+        backgroundColor: [C.orange, C.red, C.green, C.sky, C.purple],
+        pointRadius: 8,
+      }
+    ]
+  },
+  options: {
+    scales: {
+      x: { title: { display: true, text: 'Nearest HVSR f₀ (Hz)' }, min: 0, max: 2 },
+      y: { title: { display: true, text: 'SSR f₀ (Hz)' }, min: 0, max: 2.6 }
+    },
+    plugins: {
+      tooltip: {
+        callbacks: {
+          label: ctx => ctx.raw.label
+            ? `${ctx.raw.label}: HVSR=${ctx.raw.x} Hz, SSR=${ctx.raw.y} Hz`
+            : ''
+        }
+      }
+    }
+  }
+});
+
+/* ── building density bar ─── */
+new Chart(document.getElementById('chart_density'), {
+  type: 'bar',
+  data: {
+    labels: ['Latha','Sanchaung','S.Okkalapa','Pabedan','Dagon M.(N)','N.Okkalapa','Thaketa','Dawbon','Yankin','Tamwe','Pazundaung','Kyauktada','Thingangyun','Lanmadaw','Insein'],
+    datasets: [{
+      label: 'Buildings/km²',
+      data: [2071,1788,1777,1585,1414,1392,1314,1298,1245,1196,1136,1131,1128,1052,988],
+      backgroundColor: '#f97316aa',
+      borderColor: '#ea580c',
+      borderWidth: 1.5,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { title: { display: true, text: 'Buildings / km²' } },
+      y: { ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+/* ── coverage ratio bar ─── */
+new Chart(document.getElementById('chart_coverage'), {
+  type: 'bar',
+  data: {
+    labels: ['Pabedan','Latha','Kyauktada','Sanchaung','S.Okkalapa','Dawbon','Thaketa','Yankin','Tamwe','Pazundaung','Ahlone','Lanmadaw','Botahtaung','Kyeemyindaing','Thingangyun'],
+    datasets: [{
+      label: 'Coverage Ratio',
+      data: [0.477,0.449,0.401,0.343,0.270,0.244,0.193,0.227,0.267,0.321,0.188,0.287,0.227,0.218,0.212],
+      backgroundColor: '#0ea5e9aa',
+      borderColor: '#0284c7',
+      borderWidth: 1.5,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { title: { display: true, text: 'Coverage Ratio' }, min: 0, max: 0.55 },
+      y: { ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+/* ── SRI all townships bar ─── */
+const sri_data = [
+  {name:'North Okkalapa',      sri:0.7981, cls:'High'},
+  {name:'Dagon M.(North)',     sri:0.6190, cls:'Moderate'},
+  {name:'Insein',              sri:0.5948, cls:'Moderate'},
+  {name:'Shwepyithar',         sri:0.5533, cls:'Moderate'},
+  {name:'Mingaladon',          sri:0.5138, cls:'Moderate'},
+  {name:'Mayangone',           sri:0.5111, cls:'Moderate'},
+  {name:'South Okkalapa',      sri:0.4801, cls:'Low'},
+  {name:'Dagon M.(East)',      sri:0.4453, cls:'Low'},
+  {name:'Hmawbi',              sri:0.3877, cls:'Low'},
+  {name:'Hlaing',              sri:0.3866, cls:'Low'},
+  {name:'Hlegu',               sri:0.3824, cls:'Low'},
+  {name:'Hlaingtharya (E)',    sri:0.3823, cls:'Low'},
+  {name:'Latha',               sri:0.3802, cls:'Low'},
+  {name:'Dagon M.(South)',     sri:0.3683, cls:'Low'},
+  {name:'Taikkyi',             sri:0.3613, cls:'Low'},
+  {name:'Sanchaung',           sri:0.3485, cls:'Low'},
+  {name:'Yankin',              sri:0.3282, cls:'Low'},
+  {name:'Htantabin',           sri:0.3205, cls:'Low'},
+  {name:'Hlaingtharya (W)',    sri:0.3012, cls:'Low'},
+  {name:'Pabedan',             sri:0.2972, cls:'Low'},
+  {name:'Thingangyun',         sri:0.2957, cls:'Low'},
+  {name:'Thaketa',             sri:0.2894, cls:'Low'},
+  {name:'Dagon M.(Seikkan)',   sri:0.2725, cls:'Low'},
+  {name:'Dawbon',              sri:0.2666, cls:'Low'},
+  {name:'Tamwe',               sri:0.2603, cls:'Low'},
+  {name:'Pazundaung',          sri:0.2281, cls:'Very Low'},
+  {name:'Kyauktada',           sri:0.2219, cls:'Very Low'},
+  {name:'Kayan',               sri:0.2132, cls:'Very Low'},
+  {name:'Lanmadaw',            sri:0.2112, cls:'Very Low'},
+  {name:'Bahan',               sri:0.2068, cls:'Very Low'},
+  {name:'Kamaryut',            sri:0.2059, cls:'Very Low'},
+  {name:'Kyeemyindaing',       sri:0.2040, cls:'Very Low'},
+  {name:'Ahlone',              sri:0.1815, cls:'Very Low'},
+  {name:'Mingalartaungnyunt',  sri:0.1678, cls:'Very Low'},
+  {name:'Thongwa',             sri:0.1499, cls:'Very Low'},
+  {name:'Botahtaung',          sri:0.1433, cls:'Very Low'},
+  {name:'Twantay',             sri:0.1428, cls:'Very Low'},
+  {name:'Thanlyin',            sri:0.1277, cls:'Very Low'},
+  {name:'Dagon',               sri:0.0980, cls:'Very Low'},
+  {name:'Seikgyikanaungto',    sri:0.0766, cls:'Very Low'},
+  {name:'Kyauktan',            sri:0.0707, cls:'Very Low'},
+  {name:'Kawhmu',              sri:0.0544, cls:'Very Low'},
+  {name:'Kungyangon',          sri:0.0436, cls:'Very Low'},
+  {name:'Dala',                sri:0.0408, cls:'Very Low'},
+];
+
+const clsColor = cls => ({
+  'High': '#dc2626cc', 'Moderate': '#ea580ccc', 'Low': '#ca8a04cc', 'Very Low': '#16a34acc'
+})[cls] || '#64748bcc';
+
+new Chart(document.getElementById('chart_sri'), {
+  type: 'bar',
+  data: {
+    labels: sri_data.map(d => d.name),
+    datasets: [{
+      label: 'SRI',
+      data: sri_data.map(d => d.sri),
+      backgroundColor: sri_data.map(d => clsColor(d.cls)),
+      borderWidth: 0,
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { font: { size: 9 }, maxRotation: 55 } },
+      y: { title: { display: true, text: 'SRI' }, min: 0, max: 0.85 }
+    }
+  }
+});
+
+/* ── populate risk table ─── */
+const fullRisk = [
+  ['North Okkalapa','Yangon (East)',1.000,0.672,0.652,0.7981,'High'],
+  ['Dagon Myothit (N)','Yangon (East)',0.602,0.682,0.557,0.6190,'Moderate'],
+  ['Insein','Yangon (North)',0.578,0.477,0.787,0.5948,'Moderate'],
+  ['Shwepyithar','Yangon (North)',0.701,0.410,0.518,0.5533,'Moderate'],
+  ['Mingaladon','Yangon (North)',0.790,0.194,0.520,0.5138,'Moderate'],
+  ['Mayangone','Yangon (West)',0.343,0.355,1.000,0.5111,'Moderate'],
+  ['South Okkalapa','Yangon (East)',0.221,0.858,0.367,0.4801,'Low'],
+  ['Dagon Myothit (E)','Yangon (East)',0.731,0.141,0.415,0.4453,'Low'],
+  ['Hmawbi','Yangon (North)',0.703,0.035,0.377,0.3877,'Low'],
+  ['Hlaing','Yangon (West)',0.226,0.456,0.546,0.3866,'Low'],
+  ['Hlegu','Yangon (North)',0.735,0.012,0.337,0.3824,'Low'],
+  ['Hlaingtharya (E)','Yangon (North)',0.369,0.308,0.509,0.3823,'Low'],
+  ['Latha','Yangon (West)',0.057,1.000,0.030,0.3802,'Low'],
+  ['Dagon Myothit (S)','Yangon (East)',0.490,0.241,0.352,0.3683,'Low'],
+  ['Taikkyi','Yangon (North)',0.700,0.010,0.311,0.3613,'Low'],
+  ['Sanchaung','Yangon (West)',0.103,0.863,0.022,0.3485,'Low'],
+  ['Yankin','Yangon (East)',0.144,0.601,0.242,0.3282,'Low'],
+  ['Htantabin','Yangon (North)',0.574,0.007,0.353,0.3205,'Low'],
+  ['Hlaingtharya (W)','Yangon (North)',0.457,0.023,0.441,0.3012,'Low'],
+  ['Pabedan','Yangon (West)',0.052,0.765,0.035,0.2972,'Low'],
+  ['Thingangyun','Yangon (East)',0.126,0.544,0.219,0.2957,'Low'],
+  ['Thaketa','Yangon (East)',0.075,0.634,0.151,0.2894,'Low'],
+  ['Dagon M.(Seikkan)','Yangon (East)',0.386,0.125,0.297,0.2725,'Low'],
+  ['Dawbon','Yangon (East)',0.057,0.626,0.099,0.2666,'Low'],
+  ['Tamwe','Yangon (East)',0.084,0.577,0.100,0.2603,'Low'],
+  ['Pazundaung','Yangon (West)',0.049,0.548,0.066,0.2281,'Very Low'],
+  ['Kyauktada','Yangon (West)',0.050,0.545,0.045,0.2219,'Very Low'],
+  ['Kayan','Yangon (East)',0.384,0.000,0.239,0.2132,'Very Low'],
+  ['Lanmadaw','Yangon (West)',0.067,0.507,0.028,0.2112,'Very Low'],
+  ['Bahan','Yangon (West)',0.085,0.458,0.050,0.2068,'Very Low'],
+  ['Kamaryut','Yangon (West)',0.133,0.399,0.053,0.2059,'Very Low'],
+  ['Kyeemyindaing','Yangon (West)',0.158,0.327,0.104,0.2040,'Very Low'],
+  ['Ahlone','Yangon (West)',0.090,0.388,0.038,0.1815,'Very Low'],
+  ['Mingalartaungnyunt','Yangon (East)',0.064,0.363,0.061,0.1678,'Very Low'],
+  ['Thongwa','Yangon (East)',0.237,0.012,0.205,0.1499,'Very Low'],
+  ['Botahtaung','Yangon (East)',0.042,0.308,0.075,0.1433,'Very Low'],
+  ['Twantay','Yangon (East)',0.206,0.008,0.230,0.1428,'Very Low'],
+  ['Thanlyin','Yangon (East)',0.200,0.002,0.189,0.1277,'Very Low'],
+  ['Dagon','Yangon (East)',0.075,0.194,0.000,0.0980,'Very Low'],
+  ['Seikgyikanaungto','Yangon (East)',0.093,0.049,0.089,0.0766,'Very Low'],
+  ['Kyauktan','Yangon (East)',0.083,0.001,0.149,0.0707,'Very Low'],
+  ['Kawhmu','Yangon (East)',0.029,0.002,0.168,0.0544,'Very Low'],
+  ['Kungyangon','Yangon (East)',0.000,0.006,0.166,0.0436,'Very Low'],
+  ['Dala','Yangon (East)',0.019,0.013,0.115,0.0408,'Very Low'],
+];
+
+const badgeMap = {
+  'High':     'badge-high',
+  'Moderate': 'badge-moderate',
+  'Low':      'badge-low',
+  'Very Low': 'badge-vlow',
+};
+
+const tbody = document.getElementById('risk-tbody');
+fullRisk.forEach(([name, dist, h, e, p, sri, cls], i) => {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td>${i+1}</td>
+    <td><strong>${name}</strong></td>
+    <td>${dist}</td>
+    <td>${h.toFixed(3)}</td>
+    <td>${e.toFixed(3)}</td>
+    <td>${p.toFixed(3)}</td>
+    <td><strong>${sri.toFixed(4)}</strong></td>
+    <td><span class="badge ${badgeMap[cls]}">${cls}</span></td>
+  `;
+  tbody.appendChild(tr);
+});
+</script>
+</body>
+</html>
