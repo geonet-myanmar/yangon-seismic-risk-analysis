@@ -68,6 +68,35 @@ def main():
     df_ok = df_ok[df_ok["status"] == "ok"].copy()
     print(f"Sites with valid HVSR: {len(df_ok)} / {len(df)}")
 
+    # ── Merge co-located sites (identical coordinates → average f₀ and A₀) ──────
+    # e.g. SP02/SP03 are recorded at the exact same location with two XML epochs;
+    # duplicate coordinates produce a singular kriging covariance matrix.
+    df_ok = df_ok.copy()
+    df_ok["_lat_r"] = df_ok["lat"].round(4)
+    df_ok["_lon_r"] = df_ok["lon"].round(4)
+    n_before = len(df_ok)
+    df_ok = (df_ok.groupby(["_lat_r", "_lon_r"], as_index=False)
+             .agg(site_id=("site_id", lambda s: "/".join(sorted(s))),
+                  lat=("lat", "mean"), lon=("lon", "mean"),
+                  f0=("f0", "mean"), A0=("A0", "mean"),
+                  T0=("T0", "mean"), status=("status", "first"))
+             .drop(columns=["_lat_r", "_lon_r"]))
+    if len(df_ok) < n_before:
+        print(f"  Co-located sites averaged: {n_before} → {len(df_ok)} unique positions")
+
+    # ── Exclude A₀ outliers (anomalous instrument response) ────────────────────
+    # SP01 A₀ = 148 is ~10× the typical range (2–18) due to an instrument-response
+    # epoch mismatch; including it collapses the kriging variogram and inflates
+    # interpolated A₀ for nearby townships by an order of magnitude.
+    A0_med = df_ok["A0"].median()
+    A0_mad = max((df_ok["A0"] - A0_med).abs().median(), 0.5)   # floor avoids /0
+    A0_thresh = A0_med + 8.0 * A0_mad * 1.4826                 # Hampel outer fence
+    df_ok_A0 = df_ok[df_ok["A0"] <= A0_thresh].copy()
+    if len(df_ok_A0) < len(df_ok):
+        excl = df_ok.loc[df_ok["A0"] > A0_thresh, "site_id"].tolist()
+        print(f"  A₀ outliers excluded from A₀ interpolation "
+              f"(threshold {A0_thresh:.1f}): {excl}")
+
     # ── Load township boundaries ───────────────────────────────────────────────
     twp_path = os.path.join(BASE_DIR, "yangon_townships.geojson")
     gdf = gpd.read_file(twp_path).to_crs(epsg=4326)
@@ -79,39 +108,47 @@ def main():
     yi = np.arange(bounds[1], bounds[3], grid_res)
     xi_grid, yi_grid = np.meshgrid(xi, yi)
 
-    pts = df_ok[["lon", "lat"]].values
-    f0_vals  = df_ok["f0"].values
-    A0_vals  = df_ok["A0"].values
+    pts     = df_ok[["lon", "lat"]].values
+    f0_vals = df_ok["f0"].values
 
-    # Kriging for f0 (more physically meaningful spatial structure)
+    # A₀ kriging uses outlier-cleaned subset
+    pts_A0   = df_ok_A0[["lon", "lat"]].values
+    A0_vals  = df_ok_A0["A0"].values
+
+    # Kriging — spherical variogram plateaus at the sill, preventing the
+    # unbounded linear extrapolation artifacts seen far from measurement sites.
     if len(df_ok) >= 4:
         try:
             ok_f0 = OrdinaryKriging(pts[:, 0], pts[:, 1], f0_vals,
-                                    variogram_model="linear",
+                                    variogram_model="spherical",
                                     verbose=False, enable_plotting=False)
             f0_krig, _ = ok_f0.execute("grid", xi, yi)
             f0_grid = np.array(f0_krig)
         except Exception as e:
-            print(f"  Kriging f0 failed ({e}), falling back to IDW")
+            print(f"  Kriging f₀ failed ({e}), falling back to IDW")
             f0_grid = griddata(pts, f0_vals, (xi_grid, yi_grid), method="linear")
+    else:
+        print("  < 4 sites — using nearest-neighbour interpolation")
+        f0_grid = griddata(pts, f0_vals, (xi_grid, yi_grid), method="nearest")
 
+    if len(df_ok_A0) >= 4:
         try:
-            ok_A0 = OrdinaryKriging(pts[:, 0], pts[:, 1], A0_vals,
-                                    variogram_model="linear",
+            ok_A0 = OrdinaryKriging(pts_A0[:, 0], pts_A0[:, 1], A0_vals,
+                                    variogram_model="spherical",
                                     verbose=False, enable_plotting=False)
             A0_krig, _ = ok_A0.execute("grid", xi, yi)
             A0_grid = np.array(A0_krig)
         except Exception as e:
-            print(f"  Kriging A0 failed ({e}), falling back to IDW")
-            A0_grid = griddata(pts, A0_vals, (xi_grid, yi_grid), method="linear")
+            print(f"  Kriging A₀ failed ({e}), falling back to IDW")
+            A0_grid = griddata(pts_A0, A0_vals, (xi_grid, yi_grid), method="linear")
     else:
-        print("  < 4 sites — using IDW interpolation")
-        f0_grid = griddata(pts, f0_vals, (xi_grid, yi_grid), method="nearest")
-        A0_grid = griddata(pts, A0_vals, (xi_grid, yi_grid), method="nearest")
+        A0_grid = griddata(pts_A0, A0_vals, (xi_grid, yi_grid), method="nearest")
 
-    # Clip to 0
-    f0_grid = np.clip(f0_grid, 0.01, None)
-    A0_grid = np.clip(A0_grid, 0.01, None)
+    # Physical bounds:
+    #   f₀ must lie in a realistic range for soft sedimentary basins
+    #   A₀ ≥ 1.0 by definition (HVSR peak ratio cannot be less than 1)
+    f0_grid = np.clip(f0_grid, 0.1, 5.0)
+    A0_grid = np.clip(A0_grid, 1.0, None)
     T0_grid = 1.0 / f0_grid
 
     # ── Zonal statistics: sample grid points inside each township ─────────────
@@ -169,19 +206,24 @@ def main():
 
     # ── Static map: f0 and A0 ──────────────────────────────────────────────────
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
-    for ax, grid, label, cmap in zip(
+    for ax, grid, label, cmap, df_pts in zip(
             axes,
             [f0_grid, A0_grid],
             ["Fundamental Frequency f₀ (Hz)", "Amplification A₀"],
-            ["RdYlGn_r", "Reds"]):
+            ["RdYlGn_r", "Reds"],
+            [df_ok, df_ok_A0]):            # A₀ scatter excludes outlier sites
+        vmin, vmax = float(np.nanmin(grid)), float(np.nanmax(grid))
         im = ax.imshow(grid, origin="lower", cmap=cmap,
                        extent=[bounds[0], bounds[2], bounds[1], bounds[3]],
-                       aspect="auto", alpha=0.7)
+                       aspect="auto", alpha=0.7, vmin=vmin, vmax=vmax)
         gdf.boundary.plot(ax=ax, color="k", lw=0.5)
-        if len(df_ok):
-            sc = ax.scatter(df_ok["lon"], df_ok["lat"], c=df_ok["f0" if "f₀" in label else "A0"],
-                            cmap=cmap, edgecolors="k", s=60, zorder=5)
-            for _, r in df_ok.iterrows():
+        if len(df_pts):
+            col_name = "f0" if "f₀" in label else "A0"
+            ax.scatter(df_pts["lon"], df_pts["lat"],
+                       c=df_pts[col_name], cmap=cmap,
+                       vmin=vmin, vmax=vmax,
+                       edgecolors="k", s=60, zorder=5)
+            for _, r in df_pts.iterrows():
                 ax.annotate(r["site_id"], (r["lon"], r["lat"]),
                             fontsize=6, ha="left", va="bottom")
         plt.colorbar(im, ax=ax, shrink=0.8, label=label)
