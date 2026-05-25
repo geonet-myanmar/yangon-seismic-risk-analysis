@@ -164,26 +164,46 @@ def main():
     gdf_plot    = gdf_twp_wgs.merge(expo_df, on="adm3_pcode", how="left",
                                      suffixes=("", "_expo"))
 
-    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    fig, axes = plt.subplots(1, 2, figsize=(16, 8))
 
-    # Building density
-    gdf_plot.plot(column="building_density_km2", ax=axes[0],
-                  cmap="YlOrRd", legend=True,
-                  missing_kwds={"color": "lightgrey"})
-    axes[0].set_title("Building Density (buildings/km²)", fontsize=11)
-    axes[0].set_xlabel("Longitude"); axes[0].set_ylabel("Latitude")
+    # --- Building density ---
+    col_d = "building_density_km2"
+    vmin_d = gdf_plot[col_d].dropna().min()
+    vmax_d = gdf_plot[col_d].dropna().max()
+    norm_d = mcolors.Normalize(vmin=vmin_d, vmax=vmax_d)
+    cmap_d = cm.get_cmap("YlOrRd")
+    gdf_plot.plot(column=col_d, ax=axes[0], cmap=cmap_d, norm=norm_d,
+                  legend=False, missing_kwds={"color": "lightgrey", "label": "No data"})
+    sm_d = cm.ScalarMappable(cmap=cmap_d, norm=norm_d)
+    sm_d.set_array([])
+    cb_d = fig.colorbar(sm_d, ax=axes[0], shrink=0.55, pad=0.03)
+    cb_d.set_label("buildings / km²", fontsize=9)
+    axes[0].set_title("Building Density (buildings/km²)", fontsize=12, fontweight="bold")
+    axes[0].set_xlabel("Longitude", fontsize=9)
+    axes[0].set_ylabel("Latitude", fontsize=9)
+    axes[0].tick_params(labelsize=8)
 
-    # Coverage ratio
-    gdf_plot.plot(column="coverage_ratio", ax=axes[1],
-                  cmap="Blues", legend=True,
-                  missing_kwds={"color": "lightgrey"})
-    axes[1].set_title("Building Coverage Ratio", fontsize=11)
-    axes[1].set_xlabel("Longitude"); axes[1].set_ylabel("Latitude")
+    # --- Coverage ratio ---
+    col_c = "coverage_ratio"
+    vmin_c = gdf_plot[col_c].dropna().min()
+    vmax_c = gdf_plot[col_c].dropna().max()
+    norm_c = mcolors.Normalize(vmin=vmin_c, vmax=vmax_c)
+    cmap_c = cm.get_cmap("Blues")
+    gdf_plot.plot(column=col_c, ax=axes[1], cmap=cmap_c, norm=norm_c,
+                  legend=False, missing_kwds={"color": "lightgrey", "label": "No data"})
+    sm_c = cm.ScalarMappable(cmap=cmap_c, norm=norm_c)
+    sm_c.set_array([])
+    cb_c = fig.colorbar(sm_c, ax=axes[1], shrink=0.55, pad=0.03)
+    cb_c.set_label("coverage ratio", fontsize=9)
+    axes[1].set_title("Building Coverage Ratio", fontsize=12, fontweight="bold")
+    axes[1].set_xlabel("Longitude", fontsize=9)
+    axes[1].set_ylabel("Latitude", fontsize=9)
+    axes[1].tick_params(labelsize=8)
 
-    plt.suptitle("Yangon Building Exposure", fontsize=13, fontweight="bold")
+    plt.suptitle("Yangon Building Exposure", fontsize=14, fontweight="bold")
     plt.tight_layout()
     static_path = os.path.join(OUT_DIR, "building_exposure_static.png")
-    plt.savefig(static_path, dpi=150)
+    plt.savefig(static_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved → {static_path}")
 
